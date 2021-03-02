@@ -120,11 +120,22 @@ module Interactor
     #   # => Interactor::Failure: #<Interactor::Context foo="baz">
     #
     # Raises Interactor::Failure initialized with the Interactor::Context.
+    REDACTION_MESSAGE = 'REDACTED'.freeze
+    REDACTED_FIELDS = %i[password password_confirmation]
+
     def fail!(context = {})
-      error_context = Context.new
-      context.each { |key, value| error_context[key.to_sym] = value }
-      error_context.failure = @failure = true
-      raise Failure, error_context
+      context.each { |key, value| self[key.to_sym] = value }
+
+      self.each_pair do |key, value|
+        if value.is_a?(Hash)
+          REDACTED_FIELDS.each do |field|
+            self[key][field] = REDACTION_MESSAGE if value.key?(field)
+          end
+        end
+      end
+
+      @failure = true
+      raise Failure, self
     end
 
     # Internal: Track that an Interactor has been called. The "called!" method

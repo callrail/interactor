@@ -58,7 +58,6 @@ module Interactor
 
     describe "#fail!" do
       let(:context) { Context.build(foo: "bar") }
-      let(:error_context) { Context.build }
 
       it "sets success to false" do
         expect {
@@ -114,26 +113,51 @@ module Interactor
         }
       end
 
+      it "updates the context" do
+        expect {
+          begin
+            context.fail!(foo: "baz")
+          rescue
+            nil
+          end
+        }.to change {
+          context.foo
+        }.from("bar").to("baz")
+      end
+
+      it "updates the context with a string key" do
+        expect {
+          begin
+            context.fail!("foo" => "baz")
+          rescue
+            nil
+          end
+        }.to change {
+          context.foo
+        }.from("bar").to("baz")
+      end
+
       it "raises failure" do
         expect {
           context.fail!
         }.to raise_error(Failure)
       end
+    end
 
-      it "error context does not contain context attributes" do
-        begin
-          context.fail!
-        rescue Failure => error
-          expect(error.context.foo).to eq(nil)
-        end
-      end
+    describe "#fail! context has one or more redactable keys" do
+      let(:context) { Context.build(user: {name: "Tester", password: "12345678", password_confirmation: "12345678"}) }
 
-      it "context does not equal error context" do
-        begin
-          context.fail!
-        rescue Failure => error
-          expect(context).to_not eq(error.context)
-        end
+      it "context does not include password or password_confirmation values" do
+        expect {
+          begin
+            context.fail!()
+          rescue
+            nil
+          end
+        }.to change {
+          context.user
+        }.from({name: "Tester", password: "12345678", password_confirmation: "12345678"})
+          .to({name: "Tester", password: "REDACTED", password_confirmation: "REDACTED"})
       end
     end
 
